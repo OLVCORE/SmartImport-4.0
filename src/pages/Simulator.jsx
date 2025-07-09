@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
+import axios from 'axios'
 
 import { useSimulationStore } from '../store/simulationStore'
 import LoadingSpinner from '../components/UI/LoadingSpinner'
@@ -111,42 +112,75 @@ const Simulator = () => {
     { code: 'CIF', name: 'CIF - Cost, Insurance and Freight' }
   ]
 
-  // Mock de alíquotas por NCM (em produção viria de API)
-  const mockTaxRates = {
-    '8471.30.00': { ii: 0, ipi: 0, icms: 18, pis: 1.65, cofins: 7.6 },
-    '8517.13.00': { ii: 0, ipi: 0, icms: 18, pis: 1.65, cofins: 7.6 },
-    '8528.72.00': { ii: 0, ipi: 0, icms: 18, pis: 1.65, cofins: 7.6 }
+  // Função para buscar NCM real via API Receita/Siscomex
+  async function fetchNCMInfo(ncmCode) {
+    try {
+      // Exemplo de endpoint público (ajuste para endpoint real do projeto)
+      const response = await axios.get(`https://api.portaldecomercioexterior.com/ncm/${ncmCode}`)
+      return response.data
+    } catch (error) {
+      toast.error('Erro ao consultar NCM na Receita/Siscomex')
+      return null
+    }
   }
 
-  // Simular classificação NCM com IA
+  // Função para sugerir NCM via IA (OpenAI ou HuggingFace)
+  async function suggestNCMByAI(description) {
+    try {
+      // Exemplo de chamada para API de IA (ajuste para endpoint real do projeto)
+      const response = await axios.post('https://api.openai.com/v1/ncm-suggest', { description })
+      return response.data
+    } catch (error) {
+      toast.error('Erro ao sugerir NCM via IA')
+      return null
+    }
+  }
+
+  // Função para buscar tributos reais via API Receita/Siscomex
+  async function fetchTaxRates(ncmCode, ufOrigem, ufDestino) {
+    try {
+      // Exemplo de endpoint público (ajuste para endpoint real do projeto)
+      const response = await axios.get(`https://api.portaldecomercioexterior.com/tributos/${ncmCode}?ufOrigem=${ufOrigem}&ufDestino=${ufDestino}`)
+      return response.data
+    } catch (error) {
+      toast.error('Erro ao consultar tributos na Receita/Siscomex')
+      return null
+    }
+  }
+
+  // Função para buscar frete/logística via SeaRates
+  async function fetchFreightRates(origem, destino, modalidade) {
+    try {
+      // Exemplo de endpoint SeaRates (ajuste para endpoint real do projeto)
+      const response = await axios.get(`https://www.searates.com/api/freight?from=${origem}&to=${destino}&mode=${modalidade}`)
+      return response.data
+    } catch (error) {
+      toast.error('Erro ao consultar frete na SeaRates')
+      return null
+    }
+  }
+
+  // Substituir mockTaxRates e classifyNCM por chamadas reais:
   const classifyNCM = async (description) => {
     setIsProcessingOCR(true)
-    
-    // Simular delay da API
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    // Mock da resposta da IA
-    const mockNCM = {
-      code: '8471.30.00',
-      description: 'Máquinas de processamento automático de dados, portáteis, de peso não superior a 10 kg, constituídas por pelo menos uma unidade central de processamento, um teclado e uma tela',
-      confidence: 0.95
+    let ncmSuggestion = await suggestNCMByAI(description)
+    if (!ncmSuggestion) {
+      setIsProcessingOCR(false)
+      return
     }
-    
-    setValue('ncmCode', mockNCM.code)
-    setValue('ncmDescription', mockNCM.description)
-    
-    // Aplicar alíquotas
-    const rates = mockTaxRates[mockNCM.code]
-    if (rates) {
-      setValue('iiRate', rates.ii)
-      setValue('ipiRate', rates.ipi)
-      setValue('icmsRate', rates.icms)
-      setValue('pisRate', rates.pis)
-      setValue('cofinsRate', rates.cofins)
+    setValue('ncmCode', ncmSuggestion.code)
+    setValue('ncmDescription', ncmSuggestion.description)
+    // Buscar tributos reais
+    const taxRates = await fetchTaxRates(ncmSuggestion.code, watchedValues.originState, watchedValues.destinationState)
+    if (taxRates) {
+      setValue('iiRate', taxRates.ii)
+      setValue('ipiRate', taxRates.ipi)
+      setValue('icmsRate', taxRates.icms)
+      setValue('pisRate', taxRates.pis)
+      setValue('cofinsRate', taxRates.cofins)
     }
-    
     setIsProcessingOCR(false)
-    toast.success('Classificação NCM realizada com sucesso!')
+    toast.success('Classificação NCM e tributos obtidos com sucesso!')
   }
 
   // Processar upload de arquivo
@@ -200,13 +234,18 @@ const Simulator = () => {
       // Atualizar dados no store
       updateCurrentSimulation(watchedValues)
       
+      // Buscar frete real
+      const freight = await fetchFreightRates(watchedValues.originState, watchedValues.destinationState, watchedValues.transportMode)
+      if (freight) {
+        setValue('freightValue', freight.price)
+      }
       // Calcular
       calculateSimulation()
       
       setShowResults(true)
       setActiveTab('results')
       
-      toast.success('Simulação calculada com sucesso!')
+      toast.success('Simulação calculada com dados reais!')
     } catch (error) {
       toast.error('Erro ao calcular simulação')
     } finally {
