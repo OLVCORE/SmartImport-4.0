@@ -170,6 +170,39 @@ const internationalCategories = [
         icon: 'https://www.searates.com/design/images/apps/tools/load-calculator.png',
         links: { web: 'https://www.searates.com/tools/load-calculator', docs: 'https://www.searates.com/developers/api/load-calculator', api: 'https://www.searates.com/developers/api/load-calculator' }
       },
+      {
+        key: 'carbon-emission-calculator',
+        name: 'Calculadora de Emissão de Carbono',
+        description: 'Calcule as emissões de carbono entre dois pontos para diferentes modais de transporte.',
+        icon: 'https://www.searates.com/design/images/apps/tools/co2-calculator.png',
+        links: {
+          web: 'https://www.searates.com/tools/co2-calculator',
+          docs: 'https://www.searates.com/developers/api/co2-calculator',
+          api: 'https://www.searates.com/developers/api/co2-calculator',
+        }
+      },
+      {
+        key: 'global-delivery-calculator',
+        name: 'Calculadora de Entrega Global',
+        description: 'Consulte tarifas de courier para todos os modais de transporte.',
+        icon: 'https://www.searates.com/design/images/apps/tools/global-delivery.png',
+        links: {
+          web: 'https://www.searates.com/tools/global-delivery',
+          docs: 'https://www.searates.com/developers/api/global-delivery',
+          api: 'https://www.searates.com/developers/api/global-delivery',
+        }
+      },
+      {
+        key: 'freight-index',
+        name: 'Índice de Frete',
+        description: 'Acesse atualizações diárias e insights sobre tarifas globais de frete de contêineres.',
+        icon: 'https://www.searates.com/design/images/apps/tools/freight-index.png',
+        links: {
+          web: 'https://www.searates.com/tools/freight-index',
+          docs: 'https://www.searates.com/developers/api/freight-index',
+          api: 'https://www.searates.com/developers/api/freight-index',
+        }
+      },
       // ...adicione todas as demais ferramentas da SeaRates aqui...
     ]
   },
