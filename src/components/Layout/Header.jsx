@@ -11,7 +11,8 @@ import {
   Settings,
   HelpCircle,
   LogOut,
-  ChevronDown
+  ChevronDown,
+  PlugZap
 } from 'lucide-react'
 
 const Header = ({ onThemeToggle, theme }) => {
@@ -24,6 +25,7 @@ const Header = ({ onThemeToggle, theme }) => {
     { name: 'Simulador', href: '/simulator', icon: '🧮' },
     { name: 'Histórico', href: '/history', icon: '📚' },
     { name: 'Relatórios', href: '/reports', icon: '📈' },
+    { name: 'Integrações', href: '/integrations', icon: <PlugZap className="w-4 h-4" /> },
   ]
 
   const userMenuItems = [

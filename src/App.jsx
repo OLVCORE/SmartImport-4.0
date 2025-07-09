@@ -16,6 +16,7 @@ import History from './pages/History'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import Help from './pages/Help'
+import Integrations from './pages/Integrations'
 
 // UI Components
 import LoadingSpinner from './components/UI/LoadingSpinner'
@@ -168,6 +169,20 @@ function App() {
                           <Help />
                         </motion.div>
                       } 
+                    />
+                    
+                    <Route 
+                      path="/integrations" 
+                      element={
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <Integrations />
+                        </motion.div>
+                      }
                     />
                     
                     {/* Catch all route */}
