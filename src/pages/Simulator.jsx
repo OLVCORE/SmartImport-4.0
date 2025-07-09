@@ -229,176 +229,174 @@ const Simulator = () => {
   }
 
   return (
-    <>
+    <div className="max-w-3xl mx-auto px-2 sm:px-6 lg:px-8 py-8 bg-white dark:bg-gray-900 rounded-2xl shadow-xl min-h-[80vh] flex flex-col justify-center">
       <Helmet>
         <title>Simulador - SmartImport 4.0</title>
         <meta name="description" content="Simulador de operações de importação com IA e análise tributária" />
       </Helmet>
 
-      <div className="p-6 space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Simulador de Importação
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Simule operações de importação com IA, OCR e análise tributária completa
-            </p>
-          </div>
-          
-          <div className="flex space-x-3">
-            <button 
-              onClick={handleSave}
-              className="btn-outline flex items-center space-x-2"
-            >
-              <Save className="w-4 h-4" />
-              <span>Salvar</span>
-            </button>
-            <button 
-              onClick={handleCalculate}
-              disabled={isCalculating}
-              className="btn-primary flex items-center space-x-2"
-            >
-              {isCalculating ? (
-                <LoadingSpinner size="sm" />
-              ) : (
-                <Calculator className="w-4 h-4" />
-              )}
-              <span>{isCalculating ? 'Calculando...' : 'Calcular'}</span>
-            </button>
-          </div>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Simulador de Importação
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            Simule operações de importação com IA, OCR e análise tributária completa
+          </p>
+        </div>
+        
+        <div className="flex space-x-3">
+          <button 
+            onClick={handleSave}
+            className="btn-outline flex items-center space-x-2"
+          >
+            <Save className="w-4 h-4" />
+            <span>Salvar</span>
+          </button>
+          <button 
+            onClick={handleCalculate}
+            disabled={isCalculating}
+            className="btn-primary flex items-center space-x-2"
+          >
+            {isCalculating ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <Calculator className="w-4 h-4" />
+            )}
+            <span>{isCalculating ? 'Calculando...' : 'Calcular'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="border-b border-gray-200 dark:border-gray-700">
+          <nav className="flex space-x-8 px-6">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                  activeTab === tab.id
+                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+              >
+                <tab.icon className="w-4 h-4" />
+                <span>{tab.name}</span>
+              </button>
+            ))}
+          </nav>
         </div>
 
-        {/* Tabs */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="border-b border-gray-200 dark:border-gray-700">
-            <nav className="flex space-x-8 px-6">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
-                    activeTab === tab.id
-                      ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                  }`}
-                >
-                  <tab.icon className="w-4 h-4" />
-                  <span>{tab.name}</span>
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          <div className="p-6">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-              >
-                {/* Tab: Produto */}
-                {activeTab === 'product' && (
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                        Informações do Produto
-                      </h3>
-                      
-                      {/* Upload de arquivo */}
-                      <div className="mb-6">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Upload de Documento (PDF)
-                        </label>
-                        <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
-                          <Upload className="w-8 h-8 text-gray-400 mx-auto mb-4" />
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                            Arraste um arquivo PDF ou clique para selecionar
-                          </p>
-                          <input
-                            type="file"
-                            accept=".pdf"
-                            onChange={handleFileUpload}
-                            className="hidden"
-                            id="file-upload"
-                          />
-                          <label
-                            htmlFor="file-upload"
-                            className="btn-outline cursor-pointer"
-                          >
-                            Selecionar Arquivo
-                          </label>
-                        </div>
-                        {uploadedFile && (
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                            Arquivo: {uploadedFile.name}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Descrição do produto */}
-                      <div className="mb-6">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Descrição do Produto
-                        </label>
-                        <textarea
-                          {...register('productDescription', { required: 'Descrição é obrigatória' })}
-                          rows={4}
-                          className="input-field"
-                          placeholder="Descreva o produto ou cole o texto extraído do documento..."
+        <div className="p-6">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              {/* Tab: Produto */}
+              {activeTab === 'product' && (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                      Informações do Produto
+                    </h3>
+                    
+                    {/* Upload de arquivo */}
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Upload de Documento (PDF)
+                      </label>
+                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
+                        <Upload className="w-8 h-8 text-gray-400 mx-auto mb-4" />
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                          Arraste um arquivo PDF ou clique para selecionar
+                        </p>
+                        <input
+                          type="file"
+                          accept=".pdf"
+                          onChange={handleFileUpload}
+                          className="hidden"
+                          id="file-upload"
                         />
-                        {errors.productDescription && (
-                          <p className="form-error">{errors.productDescription.message}</p>
-                        )}
-                      </div>
-
-                      {/* Classificação NCM */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Código NCM
-                          </label>
-                          <input
-                            {...register('ncmCode')}
-                            type="text"
-                            className="input-field"
-                            placeholder="Ex: 8471.30.00"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Descrição NCM
-                          </label>
-                          <input
-                            {...register('ncmDescription')}
-                            type="text"
-                            className="input-field"
-                            placeholder="Descrição da classificação NCM"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Botão de classificação IA */}
-                      <div className="mt-6">
-                        <button
-                          type="button"
-                          onClick={() => classifyNCM(watchedValues.productDescription)}
-                          disabled={isProcessingOCR || !watchedValues.productDescription}
-                          className="btn-secondary flex items-center space-x-2"
+                        <label
+                          htmlFor="file-upload"
+                          className="btn-outline cursor-pointer"
                         >
-                          {isProcessingOCR ? (
-                            <LoadingSpinner size="sm" />
-                          ) : (
-                            <Brain className="w-4 h-4" />
-                          )}
-                          <span>
-                            {isProcessingOCR ? 'Classificando...' : 'Classificar com IA'}
-                          </span>
-                        </button>
+                          Selecionar Arquivo
+                        </label>
                       </div>
+                      {uploadedFile && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                          Arquivo: {uploadedFile.name}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Descrição do produto */}
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Descrição do Produto
+                      </label>
+                      <textarea
+                        {...register('productDescription', { required: 'Descrição é obrigatória' })}
+                        rows={4}
+                        className="input-field"
+                        placeholder="Descreva o produto ou cole o texto extraído do documento..."
+                      />
+                      {errors.productDescription && (
+                        <p className="form-error">{errors.productDescription.message}</p>
+                      )}
+                    </div>
+
+                    {/* Classificação NCM */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Código NCM
+                        </label>
+                        <input
+                          {...register('ncmCode')}
+                          type="text"
+                          className="input-field"
+                          placeholder="Ex: 8471.30.00"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Descrição NCM
+                        </label>
+                        <input
+                          {...register('ncmDescription')}
+                          type="text"
+                          className="input-field"
+                          placeholder="Descrição da classificação NCM"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Botão de classificação IA */}
+                    <div className="mt-6">
+                      <button
+                        type="button"
+                        onClick={() => classifyNCM(watchedValues.productDescription)}
+                        disabled={isProcessingOCR || !watchedValues.productDescription}
+                        className="btn-secondary flex items-center space-x-2"
+                      >
+                        {isProcessingOCR ? (
+                          <LoadingSpinner size="sm" />
+                        ) : (
+                          <Brain className="w-4 h-4" />
+                        )}
+                        <span>
+                          {isProcessingOCR ? 'Classificando...' : 'Classificar com IA'}
+                        </span>
+                      </button>
                     </div>
                   </div>
                 )}
@@ -855,12 +853,11 @@ const Simulator = () => {
                     )}
                   </div>
                 )}
-              </motion.div>
-            </AnimatePresence>
-          </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
-    </>
+    </div>
   )
 }
 

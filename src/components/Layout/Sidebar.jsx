@@ -24,14 +24,24 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Botão hambúrguer - só aparece no mobile */}
+      {/* Botão hamburguer flutuante no canto inferior esquerdo (mobile) */}
       <button
-        className="fixed top-4 left-4 z-50 sm:hidden bg-white/80 dark:bg-gray-900/80 rounded-full p-2 shadow"
+        className="fixed bottom-4 left-4 z-50 sm:hidden bg-white/80 dark:bg-gray-900/80 rounded-full p-3 shadow-lg border border-primary-200 dark:border-primary-800 hover:scale-110 transition"
         onClick={() => setOpen(true)}
         aria-label="Abrir menu"
       >
-        <Menu className="w-6 h-6" />
+        <Menu className="w-7 h-7" />
       </button>
+
+      {/* Botões flutuantes no canto inferior direito (mobile) */}
+      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-3 sm:hidden">
+        <a href="https://wa.me/SEUNUMERO" target="_blank" rel="noopener noreferrer" className="bg-green-500 hover:bg-green-600 text-white rounded-full p-3 shadow-lg flex items-center justify-center transition">
+          <svg viewBox="0 0 32 32" width="24" height="24"><path fill="currentColor" d="M16 3C9.373 3 4 8.373 4 15c0 2.385.832 4.584 2.236 6.393L4 29l7.828-2.236C13.416 27.168 15.615 28 18 28c6.627 0 12-5.373 12-12S22.627 3 16 3zm0 22c-2.021 0-3.938-.627-5.527-1.701l-.393-.262-4.66 1.332 1.332-4.66-.262-.393C5.627 18.938 5 17.021 5 15c0-6.065 4.935-11 11-11s11 4.935 11 11-4.935 11-11 11zm5.293-7.293l-2.586-2.586a1 1 0 00-1.414 0l-1.293 1.293a8.001 8.001 0 01-3.293-3.293l1.293-1.293a1 1 0 000-1.414l-2.586-2.586a1 1 0 00-1.414 0l-1.293 1.293A10.001 10.001 0 0016 25a10.001 10.001 0 0010-10c0-2.021-.627-3.938-1.701-5.527l-1.293 1.293a1 1 0 000 1.414z"/></svg>
+        </a>
+        <button className="bg-blue-500 hover:bg-blue-600 text-white rounded-full p-3 shadow-lg flex items-center justify-center transition">
+          <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 3C7.03 3 3 7.03 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-4.97-4.03-9-9-9zm1 14.93c-2.83.48-5.48-1.17-6.36-3.93H5v-2h1.64c.13-.32.29-.62.47-.91l-1.13-1.13 1.41-1.41 1.13 1.13c.29-.18.59-.34.91-.47V5h2v1.64c.32.13.62.29.91.47l1.13-1.13 1.41 1.41-1.13 1.13c.18.29.34.59.47.91H19v2h-1.64c-.13.32-.29.62-.47.91l1.13 1.13-1.41 1.41-1.13-1.13c-.29.18-.59.34-.91.47V19h-2v-1.64z"/></svg>
+        </button>
+      </div>
 
       {/* Overlay escurecido */}
       {open && (
