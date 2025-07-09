@@ -291,10 +291,9 @@ const Simulator = () => {
         </div>
 
         <div className="p-6">
-          <div key={activeTab}>
-              {/* Tab: Produto */}
-              {activeTab === 'product' && (
-                <div className="space-y-6">
+          {/* Tab: Produto */}
+          {activeTab === 'product' && (
+            <div className="space-y-6">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                       Informações do Produto
