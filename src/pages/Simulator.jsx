@@ -291,14 +291,7 @@ const Simulator = () => {
         </div>
 
         <div className="p-6">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
+          <div key={activeTab}>
               {/* Tab: Produto */}
               {activeTab === 'product' && (
                 <div className="space-y-6">
@@ -853,8 +846,7 @@ const Simulator = () => {
                     )}
                   </div>
                 )}
-            </motion.div>
-          </AnimatePresence>
+          </div>
         </div>
       </div>
     </div>
