@@ -1,5 +1,5 @@
 import React from 'react'
-// import { useSimulationStore } from '../store/simulationStore'
+import { useSimulationStore } from '../store/simulationStore'
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -23,11 +23,18 @@ import {
   Award
 } from 'lucide-react'
 
-console.log('[SmartImport] Dashboard.jsx montando (mínimo)')
+console.log('[SmartImport] Dashboard.jsx montando (store + hook)')
 
 const Dashboard = () => {
-  // TODO: Reativar hooks e lógica aos poucos
-  return <div style={{fontSize: 32, padding: 40}}>Dashboard</div>
+  const { getCustomsRegimes } = useSimulationStore()
+  const regimes = getCustomsRegimes ? getCustomsRegimes() : []
+  return (
+    <div style={{fontSize: 24, padding: 40}}>
+      Dashboard<br/>
+      <div>Regimes disponíveis:</div>
+      <pre style={{fontSize: 16, background: '#f3f4f6', padding: 12, borderRadius: 8}}>{JSON.stringify(regimes, null, 2)}</pre>
+    </div>
+  )
 }
 
 export default Dashboard 
