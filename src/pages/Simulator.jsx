@@ -19,6 +19,8 @@ import {
   TrendingDown
 } from 'lucide-react'
 
+console.log('[SmartImport] Simulator carregado')
+
 const Simulator = () => {
   const {
     simulation,

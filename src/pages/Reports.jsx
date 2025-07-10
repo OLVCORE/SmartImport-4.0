@@ -23,6 +23,8 @@ import {
   Settings
 } from 'lucide-react'
 
+console.log('[SmartImport] Reports carregado')
+
 const Reports = () => {
   const { fetchSimulations, getCustomsRegimes, getCustomsLocations, getFiscalIncentives } = useSimulationStore()
   

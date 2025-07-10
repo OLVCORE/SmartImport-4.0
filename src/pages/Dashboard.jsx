@@ -23,6 +23,8 @@ import {
   Award
 } from 'lucide-react'
 
+console.log('[SmartImport] Dashboard carregado')
+
 const Dashboard = () => {
   const { fetchSimulations, getCustomsRegimes, getCustomsLocations, getFiscalIncentives, getRequiredLicenses } = useSimulationStore()
   
