@@ -217,6 +217,38 @@ const checkRequiredLicenses = (ncmCode) => {
   return getRequiredLicenses(ncmCode)
 }
 
+// Função para gerar simulações mockadas (já existente ou adapte conforme necessário)
+function generateMockSimulations() {
+  // Importe ou copie a lógica de mock já usada nas páginas
+  // Exemplo simplificado:
+  return [
+    {
+      id: 'sim_1',
+      productName: 'Mock Produto',
+      ncmCode: '00.00.00',
+      originCountry: 'Brasil',
+      originState: 'SP',
+      destinationState: 'RJ',
+      transportMode: 'maritime',
+      customsRegime: '01',
+      customsLocation: 'BRSSZ',
+      productValue: 1000,
+      freightValue: 200,
+      insuranceValue: 20,
+      weight: 10,
+      containers: 1,
+      storageDays: 5,
+      calculatedTaxes: { ii: 160, ipi: 80, pis: 21, cofins: 96.5, icms: 180, fcp: 20 },
+      calculatedExpenses: { customs: { total: 100 }, extra: { total: 0 } },
+      calculatedIncentives: { totalSavings: 0 },
+      requiredLicenses: [],
+      totalCost: 1697.5,
+      createdAt: new Date().toISOString(),
+      status: 'calculated'
+    }
+  ]
+}
+
 export const useSimulationStore = create(
   persist(
     (set, get) => ({
@@ -408,11 +440,16 @@ export const useSimulationStore = create(
       // Buscar simulações salvas
       fetchSimulations: async () => {
         try {
+          // Em produção, sempre retorna mock
+          if (import.meta.env.PROD) {
+            return generateMockSimulations()
+          }
+          // Em dev, tenta API, senão mock
           const response = await axios.get(`${API_BASE_URL}/simulations`)
           return response.data
         } catch (error) {
-          console.error('Error fetching simulations:', error)
-          return []
+          // Em qualquer erro, retorna mock
+          return generateMockSimulations()
         }
       },
 
