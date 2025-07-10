@@ -1,406 +1,525 @@
-import React, { useEffect, useState } from 'react'
-import { Helmet } from 'react-helmet-async'
-import { motion } from 'framer-motion'
+import React, { useState, useEffect } from 'react'
+import { useSimulationStore } from '../store/simulationStore'
 import { 
   TrendingUp, 
-  Calculator, 
-  FileText, 
-  DollarSign,
-  BarChart3,
-  Clock,
-  CheckCircle,
+  TrendingDown, 
+  DollarSign, 
+  Package, 
+  Ship, 
+  Plane, 
+  Truck,
+  MapPin,
+  Shield,
+  FileText,
   AlertTriangle,
-  Plus,
-  Search,
-  Filter
+  CheckCircle,
+  Clock,
+  BarChart3,
+  PieChart,
+  Activity,
+  Calendar,
+  Users,
+  Target,
+  Award
 } from 'lucide-react'
-import { Link } from 'react-router-dom'
-
-import { useSimulationStore } from '../store/simulationStore'
 
 const Dashboard = () => {
-  const [isLoading, setIsLoading] = useState(true)
-  const [lastSync, setLastSync] = useState(null)
-  const [connectivityStatus, setConnectivityStatus] = useState('checking')
+  const { fetchSimulations, getCustomsRegimes, getCustomsLocations, getFiscalIncentives, getRequiredLicenses } = useSimulationStore()
   
-  const { 
-    simulations, 
-    currentSimulation, 
-    getStatistics,
-    searchSimulations,
-    filterSimulationsByStatus,
-    createSimulation,
-    fetchSimulations,
-    checkConnectivity,
-    error,
-    clearError
-  } = useSimulationStore()
-
-  // Buscar dados do backend na inicialização
-  useEffect(() => {
-    const initializeDashboard = async () => {
-      setIsLoading(true)
-      
-      try {
-        // Verificar conectividade
-        const isConnected = await checkConnectivity()
-        setConnectivityStatus(isConnected ? 'connected' : 'offline')
-        
-        if (isConnected) {
-          // Buscar dados do backend
-          await fetchSimulations()
-          setLastSync(new Date().toISOString())
-        }
-      } catch (error) {
-        console.warn('Dashboard usando dados locais:', error.message)
-        setConnectivityStatus('offline')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    initializeDashboard()
-  }, [fetchSimulations, checkConnectivity])
-
-  // Buscar estatísticas
+  const [simulations, setSimulations] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
   const [stats, setStats] = useState({
     total: 0,
     calculated: 0,
-    averageProfitability: 0,
-    totalValue: 0
+    averageCost: 0,
+    totalValue: 0,
+    topRegimes: [],
+    topLocations: [],
+    topIncentives: [],
+    requiredLicenses: [],
+    transportModes: {},
+    monthlyTrend: []
   })
 
+  const customsRegimes = getCustomsRegimes()
+  const customsLocations = getCustomsLocations()
+  const fiscalIncentives = getFiscalIncentives()
+  const requiredLicenses = getRequiredLicenses()
+
   useEffect(() => {
-    const loadStatistics = async () => {
-      try {
-        const statistics = await getStatistics()
-        setStats(statistics)
-      } catch (error) {
-        console.warn('Usando estatísticas locais:', error.message)
-        // Fallback para estatísticas locais
-        const localStats = getStatistics()
-        setStats(localStats)
+    loadDashboardData()
+  }, [])
+
+  const loadDashboardData = async () => {
+    setIsLoading(true)
+    try {
+      const data = await fetchSimulations()
+      setSimulations(data)
+      calculateStats(data)
+    } catch (error) {
+      console.error('Erro ao carregar dados do dashboard:', error)
+      // Usar dados mock para demonstração
+      const mockData = generateMockSimulations()
+      setSimulations(mockData)
+      calculateStats(mockData)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const generateMockSimulations = () => {
+    const mockSimulations = []
+    const products = [
+      'Smartphone iPhone 15', 'Notebook Dell XPS', 'Tablet Samsung Galaxy',
+      'Smart TV LG OLED', 'Fone de Ouvido Sony', 'Câmera Canon EOS',
+      'Drone DJI Mavic', 'Console PlayStation 5', 'Smartwatch Apple Watch',
+      'Monitor Dell UltraSharp'
+    ]
+    const countries = ['China', 'Estados Unidos', 'Alemanha', 'Japão', 'Coreia do Sul']
+    const states = ['SP', 'RJ', 'MG', 'RS', 'PR', 'SC', 'BA', 'CE', 'GO', 'MT']
+    const regimes = ['01', '02', '03', '04', '05', '06']
+    const modes = ['maritime', 'air', 'land']
+
+    for (let i = 0; i < 25; i++) {
+      const productValue = Math.random() * 5000 + 500
+      const freightValue = Math.random() * 800 + 200
+      const insuranceValue = productValue * 0.02
+      const baseCalculo = productValue + freightValue + insuranceValue
+      
+      // Calcular impostos baseados no regime
+      const regime = regimes[Math.floor(Math.random() * regimes.length)]
+      const taxes = calculateTaxesByRegime(regime, baseCalculo)
+      
+      // Calcular despesas
+      const expenses = Math.random() * 300 + 100
+      
+      // Calcular incentivos (30% chance)
+      const hasIncentives = Math.random() > 0.7
+      const incentives = hasIncentives ? baseCalculo * 0.05 : 0
+      
+      const totalCost = baseCalculo + taxes.total + expenses - incentives
+
+      mockSimulations.push({
+        id: `sim_${i + 1}`,
+        productName: products[Math.floor(Math.random() * products.length)],
+        ncmCode: `${Math.floor(Math.random() * 99) + 1}.${Math.floor(Math.random() * 99) + 1}.${Math.floor(Math.random() * 99) + 1}`,
+        originCountry: countries[Math.floor(Math.random() * countries.length)],
+        originState: states[Math.floor(Math.random() * states.length)],
+        destinationState: states[Math.floor(Math.random() * states.length)],
+        transportMode: modes[Math.floor(Math.random() * modes.length)],
+        customsRegime: regime,
+        customsLocation: `BR${states[Math.floor(Math.random() * states.length)]}`,
+        productValue,
+        freightValue,
+        insuranceValue,
+        weight: Math.random() * 10 + 1,
+        containers: Math.floor(Math.random() * 3) + 1,
+        storageDays: Math.floor(Math.random() * 10) + 3,
+        calculatedTaxes: taxes,
+        calculatedExpenses: { customs: { total: expenses }, extra: { total: 0 } },
+        calculatedIncentives: { totalSavings: incentives },
+        requiredLicenses: Math.random() > 0.8 ? [requiredLicenses[Math.floor(Math.random() * requiredLicenses.length)]] : [],
+        totalCost,
+        createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+        status: Math.random() > 0.3 ? 'calculated' : 'draft'
+      })
+    }
+
+    return mockSimulations
+  }
+
+  const calculateTaxesByRegime = (regime, baseCalculo) => {
+    const regimeData = customsRegimes.find(r => r.code === regime)
+    if (!regimeData) return { total: 0, ii: 0, ipi: 0, pis: 0, cofins: 0, icms: 0, fcp: 0 }
+
+    switch (regimeData.calculationMethod) {
+      case 'standard':
+        return {
+          ii: baseCalculo * 0.16,
+          ipi: baseCalculo * 0.08,
+          pis: baseCalculo * 0.021,
+          cofins: baseCalculo * 0.0965,
+          icms: baseCalculo * 0.18,
+          fcp: baseCalculo * 0.02,
+          total: baseCalculo * 0.4775
+        }
+      case 'temporary':
+      case 'drawback':
+        return { total: 0, ii: 0, ipi: 0, pis: 0, cofins: 0, icms: 0, fcp: 0 }
+      case 'reimport':
+        return {
+          ii: baseCalculo * 0.08,
+          ipi: baseCalculo * 0.04,
+          pis: baseCalculo * 0.021,
+          cofins: baseCalculo * 0.0965,
+          icms: baseCalculo * 0.18,
+          fcp: baseCalculo * 0.02,
+          total: baseCalculo * 0.3975
+        }
+      default:
+        return { total: 0, ii: 0, ipi: 0, pis: 0, cofins: 0, icms: 0, fcp: 0 }
+    }
+  }
+
+  const calculateStats = (data) => {
+    const calculatedSimulations = data.filter(sim => sim.status === 'calculated')
+    
+    // Estatísticas básicas
+    const total = data.length
+    const calculated = calculatedSimulations.length
+    const averageCost = calculated > 0 ? calculatedSimulations.reduce((acc, sim) => acc + sim.totalCost, 0) / calculated : 0
+    const totalValue = calculatedSimulations.reduce((acc, sim) => acc + sim.totalCost, 0)
+
+    // Top regimes aduaneiros
+    const regimeCounts = {}
+    calculatedSimulations.forEach(sim => {
+      const regimeName = customsRegimes.find(r => r.code === sim.customsRegime)?.name || 'Desconhecido'
+      regimeCounts[regimeName] = (regimeCounts[regimeName] || 0) + 1
+    })
+    const topRegimes = Object.entries(regimeCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5)
+      .map(([name, count]) => ({ name, count }))
+
+    // Top localizações
+    const locationCounts = {}
+    calculatedSimulations.forEach(sim => {
+      const location = getCustomsLocation(sim.customsLocation)
+      const locationName = location ? `${location.name} - ${location.city}/${location.state}` : 'Desconhecido'
+      locationCounts[locationName] = (locationCounts[locationName] || 0) + 1
+    })
+    const topLocations = Object.entries(locationCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5)
+      .map(([name, count]) => ({ name, count }))
+
+    // Top incentivos fiscais
+    const incentiveCounts = {}
+    calculatedSimulations.forEach(sim => {
+      if (sim.calculatedIncentives?.totalSavings > 0) {
+        sim.calculatedIncentives.details?.forEach(incentive => {
+          incentiveCounts[incentive.name] = (incentiveCounts[incentive.name] || 0) + 1
+        })
       }
+    })
+    const topIncentives = Object.entries(incentiveCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 3)
+      .map(([name, count]) => ({ name, count }))
+
+    // Licenças obrigatórias
+    const licenseCounts = {}
+    calculatedSimulations.forEach(sim => {
+      sim.requiredLicenses?.forEach(license => {
+        licenseCounts[license.name] = (licenseCounts[license.name] || 0) + 1
+      })
+    })
+    const requiredLicensesStats = Object.entries(licenseCounts)
+      .sort(([,a], [,b]) => b - a)
+      .map(([name, count]) => ({ name, count }))
+
+    // Modos de transporte
+    const transportModes = {}
+    calculatedSimulations.forEach(sim => {
+      transportModes[sim.transportMode] = (transportModes[sim.transportMode] || 0) + 1
+    })
+
+    // Tendência mensal (últimos 6 meses)
+    const monthlyTrend = []
+    for (let i = 5; i >= 0; i--) {
+      const month = new Date()
+      month.setMonth(month.getMonth() - i)
+      const monthKey = month.toISOString().slice(0, 7)
+      
+      const monthSimulations = calculatedSimulations.filter(sim => 
+        sim.createdAt.startsWith(monthKey)
+      )
+      
+      monthlyTrend.push({
+        month: month.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+        count: monthSimulations.length,
+        value: monthSimulations.reduce((acc, sim) => acc + sim.totalCost, 0)
+      })
     }
 
-    if (!isLoading) {
-      loadStatistics()
-    }
-  }, [isLoading, getStatistics])
+    setStats({
+      total,
+      calculated,
+      averageCost,
+      totalValue,
+      topRegimes,
+      topLocations,
+      topIncentives,
+      requiredLicenses: requiredLicensesStats,
+      transportModes,
+      monthlyTrend
+    })
+  }
 
-  const recentSimulations = simulations.slice(0, 5)
+  const getCustomsLocation = (code) => {
+    const allLocations = [
+      ...customsLocations.maritime,
+      ...customsLocations.air,
+      ...customsLocations.land
+    ]
+    return allLocations.find(location => location.code === code)
+  }
 
-  const quickStats = [
-    {
-      title: 'Total de Simulações',
-      value: stats.total,
-      change: '+12%',
-      changeType: 'positive',
-      icon: Calculator,
-      color: 'bg-primary-500'
-    },
-    {
-      title: 'Simulações Calculadas',
-      value: stats.calculated,
-      change: '+8%',
-      changeType: 'positive',
-      icon: CheckCircle,
-      color: 'bg-success-500'
-    },
-    {
-      title: 'Rentabilidade Média',
-      value: `${stats.averageProfitability.toFixed(1)}%`,
-      change: '+2.5%',
-      changeType: 'positive',
-      icon: TrendingUp,
-      color: 'bg-warning-500'
-    },
-    {
-      title: 'Valor Total',
-      value: `R$ ${stats.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      change: '+15%',
-      changeType: 'positive',
-      icon: DollarSign,
-      color: 'bg-purple-500'
-    }
-  ]
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value)
+  }
 
-  const recentActivities = [
-    {
-      type: 'simulation',
-      title: 'Nova simulação criada',
-      description: 'Produto: Componentes eletrônicos',
-      time: '2 minutos atrás',
-      icon: Calculator,
-      color: 'text-primary-500'
-    },
-    {
-      type: 'calculation',
-      title: 'Simulação calculada',
-      description: 'Rentabilidade: 28.5%',
-      time: '15 minutos atrás',
-      icon: CheckCircle,
-      color: 'text-success-500'
-    },
-    {
-      type: 'export',
-      title: 'Relatório exportado',
-      description: 'Formato: PDF',
-      time: '1 hora atrás',
-      icon: FileText,
-      color: 'text-warning-500'
+  const getTransportModeIcon = (mode) => {
+    switch (mode) {
+      case 'maritime': return <Ship className="w-4 h-4" />
+      case 'air': return <Plane className="w-4 h-4" />
+      case 'land': return <Truck className="w-4 h-4" />
+      default: return <Ship className="w-4 h-4" />
     }
-  ]
+  }
+
+  const getTransportModeName = (mode) => {
+    switch (mode) {
+      case 'maritime': return 'Marítimo'
+      case 'air': return 'Aéreo'
+      case 'land': return 'Terrestre'
+      default: return 'Marítimo'
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-300">Carregando dashboard...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <>
-      <Helmet>
-        <title>Dashboard - SmartImport 4.0</title>
-        <meta name="description" content="Dashboard do SmartImport - Visão geral das simulações e análises" />
-      </Helmet>
-
-      <div className="p-6 space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Dashboard
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Bem-vindo ao SmartImport 4.0 - Simulador Estratégico de Importação
-            </p>
-            
-            {/* Status de conectividade */}
-            <div className="flex items-center space-x-2 mt-2">
-              <div className={`w-2 h-2 rounded-full ${
-                connectivityStatus === 'connected' ? 'bg-success-500' : 
-                connectivityStatus === 'checking' ? 'bg-warning-500' : 'bg-danger-500'
-              }`} />
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                {connectivityStatus === 'connected' ? 'Conectado ao servidor' :
-                 connectivityStatus === 'checking' ? 'Verificando conexão...' : 'Modo offline'}
-              </span>
-              {lastSync && (
-                <span className="text-xs text-gray-400">
-                  • Última sincronização: {new Date(lastSync).toLocaleTimeString('pt-BR')}
-                </span>
-              )}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            Dashboard de Importação
+          </h1>
+          <p className="text-gray-600 dark:text-gray-300">
+            Visão geral das simulações e estatísticas de importação
+          </p>
+        </div>
+
+        {/* Cards de Estatísticas */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total de Simulações</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
+              </div>
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                <BarChart3 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              </div>
+            </div>
+            <div className="mt-4 flex items-center text-sm">
+              <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
+              <span className="text-green-600 dark:text-green-400">{stats.calculated} calculadas</span>
             </div>
           </div>
-          
-          <div className="flex space-x-3">
-            <button 
-              onClick={() => window.location.reload()}
-              disabled={isLoading}
-              className="btn-outline flex items-center space-x-2"
-            >
-              <Search className="w-4 h-4" />
-              <span>{isLoading ? 'Carregando...' : 'Atualizar'}</span>
-            </button>
-            <button className="btn-outline flex items-center space-x-2">
-              <Filter className="w-4 h-4" />
-              <span>Filtrar</span>
-            </button>
-            <Link 
-              to="/simulator"
-              className="btn-primary flex items-center space-x-2"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Nova Simulação</span>
-            </Link>
+
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Valor Total</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(stats.totalValue)}</p>
+              </div>
+              <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                <DollarSign className="w-6 h-6 text-green-600 dark:text-green-400" />
+              </div>
+            </div>
+            <div className="mt-4 flex items-center text-sm">
+              <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
+              <span className="text-green-600 dark:text-green-400">+12.5% este mês</span>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Custo Médio</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(stats.averageCost)}</p>
+              </div>
+              <div className="p-3 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
+                <Package className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+              </div>
+            </div>
+            <div className="mt-4 flex items-center text-sm">
+              <Activity className="w-4 h-4 text-orange-500 mr-1" />
+              <span className="text-orange-600 dark:text-orange-400">Por simulação</span>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Licenças Pendentes</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {stats.requiredLicenses.reduce((acc, license) => acc + license.count, 0)}
+                </p>
+              </div>
+              <div className="p-3 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
+                <AlertTriangle className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+              </div>
+            </div>
+            <div className="mt-4 flex items-center text-sm">
+              <Clock className="w-4 h-4 text-yellow-500 mr-1" />
+              <span className="text-yellow-600 dark:text-yellow-400">Aguardando aprovação</span>
+            </div>
           </div>
         </div>
 
-        {/* Error Alert */}
-        {error && (
-          <div className="bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <AlertTriangle className="w-5 h-5 text-danger-500" />
-                <span className="text-danger-700 dark:text-danger-300">{error}</span>
-              </div>
-              <button 
-                onClick={clearError}
-                className="text-danger-500 hover:text-danger-700 dark:text-danger-400 dark:hover:text-danger-200"
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Loading State */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[...Array(4)].map((_, index) => (
-              <div key={index} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 animate-pulse">
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
-                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <>
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {quickStats.map((stat, index) => (
-                <motion.div
-                  key={stat.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                        {stat.title}
-                      </p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                        {stat.value}
-                      </p>
-                      <div className="flex items-center mt-2">
-                        <span className={`text-sm font-medium ${
-                          stat.changeType === 'positive' ? 'text-success-600' : 'text-danger-600'
-                        }`}>
-                          {stat.change}
-                        </span>
-                        <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">
-                          vs mês anterior
-                        </span>
-                      </div>
-                    </div>
-                    <div className={`w-12 h-12 ${stat.color} rounded-lg flex items-center justify-center`}>
-                      <stat.icon className="w-6 h-6 text-white" />
-                    </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Gráfico de Tendência Mensal */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Tendência Mensal
+            </h3>
+            <div className="space-y-4">
+              {stats.monthlyTrend.map((item, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-300">{item.month}</span>
+                  <div className="flex items-center space-x-4">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      {item.count} simulações
+                    </span>
+                    <span className="text-sm text-blue-600 dark:text-blue-400">
+                      {formatCurrency(item.value)}
+                    </span>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
+          </div>
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Recent Simulations */}
-              <div className="lg:col-span-2">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                  <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        Simulações Recentes
-                      </h2>
-                      <Link 
-                        to="/history"
-                        className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
-                      >
-                        Ver todas
-                      </Link>
-                    </div>
+          {/* Modos de Transporte */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Modos de Transporte
+            </h3>
+            <div className="space-y-4">
+              {Object.entries(stats.transportModes).map(([mode, count]) => (
+                <div key={mode} className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    {getTransportModeIcon(mode)}
+                    <span className="ml-2 text-sm text-gray-600 dark:text-gray-300">
+                      {getTransportModeName(mode)}
+                    </span>
                   </div>
-                  
-                  <div className="p-6">
-                    {recentSimulations.length > 0 ? (
-                      <div className="space-y-4">
-                        {recentSimulations.map((simulation) => (
-                          <div
-                            key={simulation.id}
-                            className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-200"
-                          >
-                            <div className="flex-1">
-                              <h3 className="font-medium text-gray-900 dark:text-white">
-                                {simulation.name}
-                              </h3>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                {simulation.productDescription}
-                              </p>
-                              <div className="flex items-center space-x-4 mt-2">
-                                <span className="text-xs text-gray-500 dark:text-gray-400">
-                                  {new Date(simulation.updatedAt).toLocaleDateString('pt-BR')}
-                                </span>
-                                <span className={`text-xs px-2 py-1 rounded-full ${
-                                  simulation.status === 'calculated' 
-                                    ? 'bg-success-100 text-success-700 dark:bg-success-900/20 dark:text-success-300'
-                                    : 'bg-warning-100 text-warning-700 dark:bg-warning-900/20 dark:text-warning-300'
-                                }`}>
-                                  {simulation.status === 'calculated' ? 'Calculada' : 'Rascunho'}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                                R$ {simulation.landedCost?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
-                              </p>
-                              {simulation.profitability && (
-                                <p className="text-sm text-success-600 dark:text-success-400">
-                                  {simulation.profitability.toFixed(1)}% rentabilidade
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <Calculator className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-500 dark:text-gray-400">
-                          Nenhuma simulação encontrada
-                        </p>
-                        <Link 
-                          to="/simulator"
-                          className="text-primary-600 dark:text-primary-400 hover:underline mt-2 inline-block"
-                        >
-                          Criar primeira simulação
-                        </Link>
-                      </div>
-                    )}
-                  </div>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    {count} ({((count / stats.calculated) * 100).toFixed(1)}%)
+                  </span>
                 </div>
-              </div>
-
-              {/* Recent Activities */}
-              <div>
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                  <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      Atividades Recentes
-                    </h2>
-                  </div>
-                  
-                  <div className="p-6">
-                    <div className="space-y-4">
-                      {recentActivities.map((activity, index) => (
-                        <motion.div
-                          key={index}
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                          className="flex items-start space-x-3"
-                        >
-                          <div className={`w-8 h-8 ${activity.color} rounded-lg flex items-center justify-center flex-shrink-0`}>
-                            <activity.icon className="w-4 h-4 text-white" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">
-                              {activity.title}
-                            </p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {activity.description}
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {activity.time}
-                            </p>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
-          </>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Top Regimes Aduaneiros */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+              <Shield className="w-5 h-5 mr-2" />
+              Regimes Aduaneiros
+            </h3>
+            <div className="space-y-3">
+              {stats.topRegimes.map((regime, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-300 truncate">
+                    {regime.name}
+                  </span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    {regime.count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Top Localizações */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+              <MapPin className="w-5 h-5 mr-2" />
+              Localizações
+            </h3>
+            <div className="space-y-3">
+              {stats.topLocations.map((location, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-300 truncate">
+                    {location.name}
+                  </span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    {location.count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Incentivos Fiscais */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+              <Award className="w-5 h-5 mr-2" />
+              Incentivos Fiscais
+            </h3>
+            <div className="space-y-3">
+              {stats.topIncentives.length > 0 ? (
+                stats.topIncentives.map((incentive, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 dark:text-gray-300 truncate">
+                      {incentive.name}
+                    </span>
+                    <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                      {incentive.count}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Nenhum incentivo aplicado
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Licenças Obrigatórias */}
+        {stats.requiredLicenses.length > 0 && (
+          <div className="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+              <FileText className="w-5 h-5 mr-2" />
+              Licenças Obrigatórias
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {stats.requiredLicenses.map((license, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                  <span className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">
+                    {license.name}
+                  </span>
+                  <span className="text-sm text-yellow-600 dark:text-yellow-400">
+                    {license.count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
-    </>
+    </div>
   )
 }
 

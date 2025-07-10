@@ -1,453 +1,483 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { nanoid } from 'nanoid'
 import axios from 'axios'
+import { 
+  customsRegimes, 
+  customsLocations, 
+  fiscalIncentives, 
+  customsExpenses, 
+  extraExpenses, 
+  requiredLicenses,
+  icmsRates,
+  fcpRates,
+  getCustomsLocation,
+  getRequiredLicenses,
+  getApplicableIncentives,
+  calculateICMSInterestadual
+} from '../data/importData'
 
-// Tipos de dados para simulação
-const initialSimulationData = {
-  // Dados básicos do produto
-  productDescription: '',
-  ncmCode: '',
-  ncmDescription: '',
-  
-  // Valores e moedas
-  fobValue: 0,
-  freightValue: 0,
-  insuranceValue: 0,
-  currency: 'USD',
-  exchangeRate: 5.5,
-  
-  // Estados e modais
-  originState: 'SP',
-  destinationState: 'SP',
-  transportMode: 'maritime',
-  incoterm: 'CIF',
-  
-  // Custos logísticos
-  afrmmValue: 0,
-  thcValue: 0,
-  storageValue: 0,
-  handlingValue: 0,
-  
-  // Tributos
-  iiRate: 0,
-  ipiRate: 0,
-  icmsRate: 0,
-  pisRate: 0,
-  cofinsRate: 0,
-  
-  // Resultados calculados
-  totalTaxes: 0,
-  totalCosts: 0,
-  landedCost: 0,
-  cmv: 0,
-  markup: 0,
-  profitability: 0,
-  
-  // Metadados
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-  id: nanoid(),
-  name: 'Nova Simulação',
-  status: 'draft'
+// API base URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+
+// Função para buscar dados da API com fallback
+const fetchFromAPI = async (endpoint, fallbackData) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}${endpoint}`)
+    return response.data
+  } catch (error) {
+    console.warn(`API call failed for ${endpoint}, using fallback data:`, error.message)
+    return fallbackData
+  }
 }
 
-// Configuração da API
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://api.smartimport.com.br/v1'
-const API_TIMEOUT = 10000
-
-// Cliente axios configurado
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: API_TIMEOUT,
-  headers: {
-    'Content-Type': 'application/json'
+// Função para calcular impostos baseada no regime aduaneiro
+const calculateTaxesByRegime = (regime, baseCalculo, ncmCode, originState, destinationState) => {
+  const regimeData = customsRegimes.find(r => r.code === regime)
+  
+  if (!regimeData) {
+    return { ii: 0, ipi: 0, pis: 0, cofins: 0, icms: 0, fcp: 0 }
   }
-})
 
-// Interceptor para logs de auditoria
-apiClient.interceptors.request.use(
-  (config) => {
-    console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, config.data)
-    return config
-  },
-  (error) => {
-    console.error('[API Request Error]', error)
-    return Promise.reject(error)
+  // Buscar alíquotas da API ou usar fallback
+  const ncmData = {
+    ii: 16.0, // 16% padrão
+    ipi: 8.0,  // 8% padrão
+    pis: 2.1,  // 2.1% padrão
+    cofins: 9.65 // 9.65% padrão
   }
-)
 
-apiClient.interceptors.response.use(
-  (response) => {
-    console.log(`[API Response] ${response.status} ${response.config.url}`, response.data)
-    return response
-  },
-  (error) => {
-    console.error('[API Response Error]', error.response?.status, error.response?.data)
-    return Promise.reject(error)
+  let ii = 0
+  let ipi = 0
+  let pis = 0
+  let cofins = 0
+  let icms = 0
+  let fcp = 0
+
+  // Aplicar lógica específica por regime
+  switch (regimeData.calculationMethod) {
+    case 'standard':
+      ii = (baseCalculo * ncmData.ii) / 100
+      ipi = (baseCalculo * ncmData.ipi) / 100
+      pis = (baseCalculo * ncmData.pis) / 100
+      cofins = (baseCalculo * ncmData.cofins) / 100
+      
+      // Calcular ICMS interestadual
+      const icmsCalc = calculateICMSInterestadual(originState, destinationState, baseCalculo)
+      icms = icmsCalc.icmsInterestadual
+      fcp = icmsCalc.fcp
+      break
+      
+    case 'temporary':
+      // Admissão temporária - impostos suspensos
+      ii = 0
+      ipi = 0
+      pis = 0
+      cofins = 0
+      icms = 0
+      fcp = 0
+      break
+      
+    case 'drawback':
+      // Drawback - impostos suspensos
+      ii = 0
+      ipi = 0
+      pis = 0
+      cofins = 0
+      icms = 0
+      fcp = 0
+      break
+      
+    case 'reimport':
+      // Reimportação - impostos reduzidos
+      ii = (baseCalculo * ncmData.ii * 0.5) / 100
+      ipi = (baseCalculo * ncmData.ipi * 0.5) / 100
+      pis = (baseCalculo * ncmData.pis) / 100
+      cofins = (baseCalculo * ncmData.cofins) / 100
+      
+      const icmsCalcReimport = calculateICMSInterestadual(originState, destinationState, baseCalculo)
+      icms = icmsCalcReimport.icmsInterestadual
+      fcp = icmsCalcReimport.fcp
+      break
+      
+    default:
+      ii = (baseCalculo * ncmData.ii) / 100
+      ipi = (baseCalculo * ncmData.ipi) / 100
+      pis = (baseCalculo * ncmData.pis) / 100
+      cofins = (baseCalculo * ncmData.cofins) / 100
+      
+      const icmsCalcDefault = calculateICMSInterestadual(originState, destinationState, baseCalculo)
+      icms = icmsCalcDefault.icmsInterestadual
+      fcp = icmsCalcDefault.fcp
   }
-)
+
+  return { ii, ipi, pis, cofins, icms, fcp }
+}
+
+// Função para calcular despesas aduaneiras
+const calculateCustomsExpenses = (transportMode, locationCode, weight, containers, days) => {
+  const location = getCustomsLocation(locationCode)
+  if (!location) return { total: 0, details: [] }
+
+  const expenses = customsExpenses[transportMode] || []
+  let total = 0
+  const details = []
+
+  expenses.forEach(expense => {
+    let amount = 0
+    
+    switch (expense.calculationMethod) {
+      case 'per_ton':
+        amount = expense.rate * weight
+        break
+      case 'per_container':
+        amount = expense.rate * containers
+        break
+      case 'per_day':
+        amount = expense.rate * days
+        break
+      default:
+        amount = expense.rate
+    }
+
+    total += amount
+    details.push({
+      code: expense.code,
+      name: expense.name,
+      amount: amount,
+      rate: expense.rate,
+      calculationMethod: expense.calculationMethod
+    })
+  })
+
+  return { total, details }
+}
+
+// Função para calcular despesas extras
+const calculateExtraExpenses = (baseCalculo, selectedExpenses) => {
+  let total = 0
+  const details = []
+
+  selectedExpenses.forEach(expenseCode => {
+    const expense = extraExpenses.find(e => e.code === expenseCode)
+    if (expense) {
+      let amount = 0
+      
+      if (expense.calculationMethod === 'percentage') {
+        amount = (baseCalculo * expense.rate) / 100
+      } else {
+        amount = expense.rate
+      }
+
+      total += amount
+      details.push({
+        code: expense.code,
+        name: expense.name,
+        amount: amount,
+        rate: expense.rate,
+        calculationMethod: expense.calculationMethod
+      })
+    }
+  })
+
+  return { total, details }
+}
+
+// Função para calcular incentivos fiscais
+const calculateFiscalIncentives = (baseCalculo, originState, destinationState, locationCode, ncmCode) => {
+  const applicableIncentives = getApplicableIncentives(destinationState, locationCode, ncmCode)
+  let totalSavings = 0
+  const details = []
+
+  applicableIncentives.forEach(incentive => {
+    let savings = 0
+    
+    if (incentive.calculationMethod === 'percentage') {
+      savings = (baseCalculo * incentive.rate) / 100
+    } else if (incentive.calculationMethod === 'exemption') {
+      // Para ZFM, calcular economia baseada nos impostos que seriam cobrados
+      const standardTaxes = calculateTaxesByRegime('06', baseCalculo, ncmCode, originState, destinationState)
+      savings = standardTaxes.ii + standardTaxes.ipi
+    }
+
+    totalSavings += savings
+    details.push({
+      code: incentive.code,
+      name: incentive.name,
+      savings: savings,
+      rate: incentive.rate,
+      calculationMethod: incentive.calculationMethod
+    })
+  })
+
+  return { totalSavings, details }
+}
+
+// Função para verificar licenças obrigatórias
+const checkRequiredLicenses = (ncmCode) => {
+  return getRequiredLicenses(ncmCode)
+}
 
 export const useSimulationStore = create(
   persist(
     (set, get) => ({
-      // Estado principal
-      simulations: [],
-      currentSimulation: null,
-      isLoading: false,
-      error: null,
-      lastSync: null,
-      
-      // Inicializar store
-      initializeStore: async () => {
-        const { simulations } = get()
-        if (simulations.length === 0) {
-          set({
-            simulations: [initialSimulationData],
-            currentSimulation: initialSimulationData
-          })
-        }
+      // Estado da simulação
+      simulation: {
+        // Dados básicos
+        productName: '',
+        ncmCode: '',
+        originCountry: '',
+        destinationState: '',
+        originState: '',
         
-        // Sincronizar com backend se disponível
-        try {
-          await get().syncWithBackend()
-        } catch (error) {
-          console.warn('Backend não disponível, usando dados locais:', error.message)
-        }
-      },
-      
-      // Sincronizar com backend
-      syncWithBackend: async () => {
-        set({ isLoading: true, error: null })
+        // Modal e regime
+        transportMode: 'maritime',
+        customsRegime: '06',
+        customsLocation: '',
         
-        try {
-          const response = await apiClient.get('/simulations')
-          const backendSimulations = response.data.simulations || []
-          
-          set(state => ({
-            simulations: backendSimulations.length > 0 ? backendSimulations : state.simulations,
-            lastSync: new Date().toISOString(),
-            isLoading: false
-          }))
-          
-          return backendSimulations
-        } catch (error) {
-          set({ 
-            error: 'Erro ao sincronizar com backend', 
-            isLoading: false 
-          })
-          throw error
-        }
-      },
-      
-      // Buscar simulações do backend
-      fetchSimulations: async () => {
-        set({ isLoading: true, error: null })
+        // Valores
+        productValue: 0,
+        freightValue: 0,
+        insuranceValue: 0,
         
-        try {
-          const response = await apiClient.get('/simulations')
-          const simulations = response.data.simulations || []
-          
-          set({ 
-            simulations,
-            isLoading: false,
-            lastSync: new Date().toISOString()
-          })
-          
-          return simulations
-        } catch (error) {
-          set({ 
-            error: 'Erro ao buscar simulações', 
-            isLoading: false 
-          })
-          throw error
-        }
-      },
-      
-      // Salvar simulação no backend
-      saveSimulationToBackend: async (simulation) => {
-        try {
-          if (simulation.id && simulation.id !== initialSimulationData.id) {
-            // Atualizar simulação existente
-            const response = await apiClient.put(`/simulations/${simulation.id}`, simulation)
-            return response.data
-          } else {
-            // Criar nova simulação
-            const { id, ...simulationData } = simulation
-            const response = await apiClient.post('/simulations', simulationData)
-            return response.data
-          }
-        } catch (error) {
-          console.error('Erro ao salvar simulação no backend:', error)
-          throw error
-        }
-      },
-      
-      // Criar nova simulação
-      createSimulation: async (data = {}) => {
-        const newSimulation = {
-          ...initialSimulationData,
-          ...data,
-          id: nanoid(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          name: data.name || `Simulação ${get().simulations.length + 1}`
-        }
+        // Dimensões
+        weight: 0,
+        containers: 1,
+        storageDays: 5,
         
-        set(state => ({
-          simulations: [newSimulation, ...state.simulations],
-          currentSimulation: newSimulation
+        // Despesas extras selecionadas
+        selectedExtraExpenses: [],
+        
+        // Resultados calculados
+        calculatedTaxes: {},
+        calculatedExpenses: {},
+        calculatedIncentives: {},
+        requiredLicenses: [],
+        totalCost: 0,
+        
+        // Estados
+        isLoading: false,
+        error: null,
+        lastCalculated: null
+      },
+
+      // Ações
+      setSimulationData: (data) => {
+        set((state) => ({
+          simulation: { ...state.simulation, ...data }
         }))
-        
-        // Tentar salvar no backend
-        try {
-          const savedSimulation = await get().saveSimulationToBackend(newSimulation)
-          set(state => ({
-            simulations: state.simulations.map(sim => 
-              sim.id === newSimulation.id ? savedSimulation : sim
-            ),
-            currentSimulation: savedSimulation
-          }))
-        } catch (error) {
-          console.warn('Simulação salva apenas localmente:', error.message)
-        }
-        
-        return newSimulation
       },
-      
-      // Atualizar simulação atual
-      updateCurrentSimulation: async (updates) => {
-        set(state => {
-          const updatedSimulation = {
-            ...state.currentSimulation,
-            ...updates,
-            updatedAt: new Date().toISOString()
-          }
+
+      // Calcular simulação completa
+      calculateSimulation: async () => {
+        const state = get()
+        const sim = state.simulation
+        
+        set((state) => ({
+          simulation: { ...state.simulation, isLoading: true, error: null }
+        }))
+
+        try {
+          // Base de cálculo
+          const baseCalculo = sim.productValue + sim.freightValue + sim.insuranceValue
           
-          const updatedSimulations = state.simulations.map(sim =>
-            sim.id === updatedSimulation.id ? updatedSimulation : sim
+          // Calcular impostos baseado no regime
+          const taxes = calculateTaxesByRegime(
+            sim.customsRegime,
+            baseCalculo,
+            sim.ncmCode,
+            sim.originState,
+            sim.destinationState
           )
           
-          return {
-            currentSimulation: updatedSimulation,
-            simulations: updatedSimulations
-          }
-        })
-        
-        // Tentar salvar no backend
-        try {
-          const savedSimulation = await get().saveSimulationToBackend(get().currentSimulation)
-          set(state => ({
-            currentSimulation: savedSimulation,
-            simulations: state.simulations.map(sim =>
-              sim.id === savedSimulation.id ? savedSimulation : sim
-            )
-          }))
-        } catch (error) {
-          console.warn('Atualização salva apenas localmente:', error.message)
-        }
-      },
-      
-      // Selecionar simulação
-      selectSimulation: (id) => {
-        const simulation = get().simulations.find(sim => sim.id === id)
-        if (simulation) {
-          set({ currentSimulation: simulation })
-        }
-      },
-      
-      // Deletar simulação
-      deleteSimulation: async (id) => {
-        set(state => {
-          const filteredSimulations = state.simulations.filter(sim => sim.id !== id)
-          const newCurrentSimulation = state.currentSimulation?.id === id 
-            ? (filteredSimulations[0] || null)
-            : state.currentSimulation
-            
-          return {
-            simulations: filteredSimulations,
-            currentSimulation: newCurrentSimulation
-          }
-        })
-        
-        // Tentar deletar no backend
-        try {
-          await apiClient.delete(`/simulations/${id}`)
-        } catch (error) {
-          console.warn('Simulação deletada apenas localmente:', error.message)
-        }
-      },
-      
-      // Duplicar simulação
-      duplicateSimulation: (id) => {
-        const simulation = get().simulations.find(sim => sim.id === id)
-        if (simulation) {
-          const duplicated = {
-            ...simulation,
-            id: nanoid(),
-            name: `${simulation.name} (Cópia)`,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            status: 'draft'
-          }
+          // Calcular despesas aduaneiras
+          const customsExpenses = calculateCustomsExpenses(
+            sim.transportMode,
+            sim.customsLocation,
+            sim.weight,
+            sim.containers,
+            sim.storageDays
+          )
           
-          set(state => ({
-            simulations: [duplicated, ...state.simulations],
-            currentSimulation: duplicated
+          // Calcular despesas extras
+          const extraExpenses = calculateExtraExpenses(baseCalculo, sim.selectedExtraExpenses)
+          
+          // Calcular incentivos fiscais
+          const incentives = calculateFiscalIncentives(
+            baseCalculo,
+            sim.originState,
+            sim.destinationState,
+            sim.customsLocation,
+            sim.ncmCode
+          )
+          
+          // Verificar licenças obrigatórias
+          const licenses = checkRequiredLicenses(sim.ncmCode)
+          
+          // Calcular custo total
+          const totalTaxes = taxes.ii + taxes.ipi + taxes.pis + taxes.cofins + taxes.icms + taxes.fcp
+          const totalExpenses = customsExpenses.total + extraExpenses.total
+          const totalCost = baseCalculo + totalTaxes + totalExpenses - incentives.totalSavings
+          
+          set((state) => ({
+            simulation: {
+              ...state.simulation,
+              calculatedTaxes: taxes,
+              calculatedExpenses: {
+                customs: customsExpenses,
+                extra: extraExpenses
+              },
+              calculatedIncentives: incentives,
+              requiredLicenses: licenses,
+              totalCost: totalCost,
+              isLoading: false,
+              lastCalculated: new Date().toISOString()
+            }
+          }))
+
+        } catch (error) {
+          set((state) => ({
+            simulation: {
+              ...state.simulation,
+              isLoading: false,
+              error: error.message
+            }
+          }))
+        }
+      },
+
+      // Buscar dados da API
+      fetchNCMData: async (ncmCode) => {
+        try {
+          const data = await fetchFromAPI(`/ncm/${ncmCode}`, {
+            code: ncmCode,
+            description: 'Produto não encontrado',
+            ii: 16.0,
+            ipi: 8.0,
+            pis: 2.1,
+            cofins: 9.65
+          })
+          return data
+        } catch (error) {
+          console.error('Error fetching NCM data:', error)
+          return null
+        }
+      },
+
+      fetchFreightData: async (origin, destination, mode, weight) => {
+        try {
+          const data = await fetchFromAPI(`/freight?origin=${origin}&destination=${destination}&mode=${mode}&weight=${weight}`, {
+            freight: 1500.00,
+            insurance: 75.00,
+            transitTime: 15
+          })
+          return data
+        } catch (error) {
+          console.error('Error fetching freight data:', error)
+          return null
+        }
+      },
+
+      // Salvar simulação
+      saveSimulation: async () => {
+        const state = get()
+        const sim = state.simulation
+        
+        set((state) => ({
+          simulation: { ...state.simulation, isLoading: true }
+        }))
+
+        try {
+          const response = await axios.post(`${API_BASE_URL}/simulations`, {
+            ...sim,
+            createdAt: new Date().toISOString()
+          })
+          
+          set((state) => ({
+            simulation: { ...state.simulation, isLoading: false }
           }))
           
-          return duplicated
-        }
-      },
-      
-      // Calcular simulação
-      calculateSimulation: async () => {
-        const { currentSimulation } = get()
-        if (!currentSimulation) return
-        
-        const {
-          fobValue,
-          freightValue,
-          insuranceValue,
-          exchangeRate,
-          afrmmValue,
-          thcValue,
-          storageValue,
-          handlingValue,
-          iiRate,
-          ipiRate,
-          icmsRate,
-          pisRate,
-          cofinsRate
-        } = currentSimulation
-        
-        // Cálculos em Reais
-        const fobBRL = fobValue * exchangeRate
-        const freightBRL = freightValue * exchangeRate
-        const insuranceBRL = insuranceValue * exchangeRate
-        
-        // Cálculo de impostos
-        const iiValue = fobBRL * (iiRate / 100)
-        const ipiValue = (fobBRL + iiValue) * (ipiRate / 100)
-        const pisValue = (fobBRL + iiValue + ipiValue) * (pisRate / 100)
-        const cofinsValue = (fobBRL + iiValue + ipiValue) * (cofinsRate / 100)
-        
-        // ICMS (simplificado)
-        const icmsValue = (fobBRL + iiValue + ipiValue + pisValue + cofinsValue) * (icmsRate / 100)
-        
-        // Totais
-        const totalTaxes = iiValue + ipiValue + pisValue + cofinsValue + icmsValue
-        const totalLogistics = freightBRL + insuranceBRL + afrmmValue + thcValue + storageValue + handlingValue
-        const totalCosts = totalTaxes + totalLogistics
-        const landedCost = fobBRL + totalCosts
-        
-        // Análise de viabilidade
-        const cmv = landedCost
-        const markup = 30 // 30% markup padrão
-        const sellingPrice = cmv * (1 + markup / 100)
-        const profitability = ((sellingPrice - cmv) / sellingPrice) * 100
-        
-        const updates = {
-          totalTaxes,
-          totalCosts,
-          landedCost,
-          cmv,
-          markup,
-          profitability,
-          status: 'calculated'
-        }
-        
-        await get().updateCurrentSimulation(updates)
-      },
-      
-      // Exportar simulação
-      exportSimulation: async (id, format = 'pdf') => {
-        const simulation = get().simulations.find(sim => sim.id === id)
-        if (!simulation) return null
-        
-        try {
-          const response = await apiClient.post(`/simulations/${id}/export`, { format })
           return response.data
         } catch (error) {
-          console.warn('Exportação local:', error.message)
-          // Fallback local
-          return {
-            ...simulation,
-            exportFormat: format,
-            exportDate: new Date().toISOString()
-          }
+          set((state) => ({
+            simulation: { ...state.simulation, isLoading: false, error: error.message }
+          }))
+          throw error
         }
       },
-      
-      // Limpar histórico
-      clearHistory: () => {
-        set({
-          simulations: [initialSimulationData],
-          currentSimulation: initialSimulationData
-        })
-      },
-      
-      // Buscar simulações
-      searchSimulations: (query) => {
-        const { simulations } = get()
-        if (!query) return simulations
-        
-        return simulations.filter(sim =>
-          sim.name.toLowerCase().includes(query.toLowerCase()) ||
-          sim.productDescription.toLowerCase().includes(query.toLowerCase()) ||
-          sim.ncmCode.includes(query)
-        )
-      },
-      
-      // Filtrar simulações por status
-      filterSimulationsByStatus: (status) => {
-        const { simulations } = get()
-        return simulations.filter(sim => sim.status === status)
-      },
-      
-      // Estatísticas com dados do backend
-      getStatistics: async () => {
-        const { simulations } = get()
-        const calculatedSimulations = simulations.filter(sim => sim.status === 'calculated')
-        
-        // Tentar buscar estatísticas do backend
+
+      // Buscar simulações salvas
+      fetchSimulations: async () => {
         try {
-          const response = await apiClient.get('/statistics')
+          const response = await axios.get(`${API_BASE_URL}/simulations`)
           return response.data
         } catch (error) {
-          console.warn('Usando estatísticas locais:', error.message)
-          // Fallback local
-          return {
-            total: simulations.length,
-            calculated: calculatedSimulations.length,
-            drafts: simulations.filter(sim => sim.status === 'draft').length,
-            averageProfitability: calculatedSimulations.length > 0
-              ? calculatedSimulations.reduce((acc, sim) => acc + sim.profitability, 0) / calculatedSimulations.length
-              : 0,
-            totalValue: calculatedSimulations.reduce((acc, sim) => acc + sim.landedCost, 0)
-          }
+          console.error('Error fetching simulations:', error)
+          return []
         }
       },
-      
-      // Limpar erro
-      clearError: () => set({ error: null }),
-      
-      // Verificar conectividade
-      checkConnectivity: async () => {
-        try {
-          await apiClient.get('/health')
-          return true
-        } catch (error) {
-          return false
-        }
-      }
+
+      // Limpar simulação
+      clearSimulation: () => {
+        set((state) => ({
+          simulation: {
+            ...state.simulation,
+            productName: '',
+            ncmCode: '',
+            originCountry: '',
+            destinationState: '',
+            originState: '',
+            transportMode: 'maritime',
+            customsRegime: '06',
+            customsLocation: '',
+            productValue: 0,
+            freightValue: 0,
+            insuranceValue: 0,
+            weight: 0,
+            containers: 1,
+            storageDays: 5,
+            selectedExtraExpenses: [],
+            calculatedTaxes: {},
+            calculatedExpenses: {},
+            calculatedIncentives: {},
+            requiredLicenses: [],
+            totalCost: 0,
+            isLoading: false,
+            error: null,
+            lastCalculated: null
+          }
+        }))
+      },
+
+      // Dados estáticos para uso nos componentes
+      getCustomsRegimes: () => customsRegimes,
+      getCustomsLocations: () => customsLocations,
+      getFiscalIncentives: () => fiscalIncentives,
+      getCustomsExpenses: () => customsExpenses,
+      getExtraExpenses: () => extraExpenses,
+      getRequiredLicenses: () => requiredLicenses,
+      getICMSRates: () => icmsRates,
+      getFCPRates: () => fcpRates
     }),
     {
-      name: 'smartimport-simulations',
+      name: 'simulation-storage',
       partialize: (state) => ({
-        simulations: state.simulations,
-        currentSimulation: state.currentSimulation,
-        lastSync: state.lastSync
+        simulation: {
+          productName: state.simulation.productName,
+          ncmCode: state.simulation.ncmCode,
+          originCountry: state.simulation.originCountry,
+          destinationState: state.simulation.destinationState,
+          originState: state.simulation.originState,
+          transportMode: state.simulation.transportMode,
+          customsRegime: state.simulation.customsRegime,
+          customsLocation: state.simulation.customsLocation,
+          productValue: state.simulation.productValue,
+          freightValue: state.simulation.freightValue,
+          insuranceValue: state.simulation.insuranceValue,
+          weight: state.simulation.weight,
+          containers: state.simulation.containers,
+          storageDays: state.simulation.storageDays,
+          selectedExtraExpenses: state.simulation.selectedExtraExpenses
+        }
       })
     }
   )
