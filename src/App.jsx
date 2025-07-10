@@ -1,8 +1,9 @@
 import React from 'react'
 import Header from './components/Layout/Header'
 import Sidebar from './components/Layout/Sidebar'
+import Dashboard from './pages/Dashboard'
 
-console.log('[SmartImport] App.jsx montando (Header + Sidebar)')
+console.log('[SmartImport] App.jsx montando (Header + Sidebar + Dashboard)')
 
 function App() {
   return (
@@ -10,6 +11,9 @@ function App() {
       <Sidebar />
       <div className="flex-1">
         <Header />
+        <main className="p-8">
+          <Dashboard />
+        </main>
       </div>
     </div>
   )
