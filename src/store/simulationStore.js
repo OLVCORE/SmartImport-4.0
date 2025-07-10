@@ -16,6 +16,8 @@ import {
   calculateICMSInterestadual
 } from '../data/importData'
 
+console.log('[SmartImport] simulationStore carregado')
+
 // API base URL
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
 
@@ -501,12 +503,12 @@ export const useSimulationStore = create(
       },
 
       // Dados estáticos para uso nos componentes
-      getCustomsRegimes: () => customsRegimes,
-      getCustomsLocations: () => customsLocations,
-      getFiscalIncentives: () => fiscalIncentives,
+      getCustomsRegimes: () => customsRegimes || [],
+      getCustomsLocations: () => customsLocations || {},
+      getFiscalIncentives: () => fiscalIncentives || [],
       getCustomsExpenses: () => customsExpenses,
       getExtraExpenses: () => extraExpenses,
-      getRequiredLicenses: () => requiredLicenses,
+      getRequiredLicenses: () => requiredLicenses || [],
       getICMSRates: () => icmsRates,
       getFCPRates: () => fcpRates
     }),

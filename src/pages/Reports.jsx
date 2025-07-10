@@ -36,9 +36,10 @@ const Reports = () => {
     transportMode: 'all'
   })
 
-  const customsRegimes = getCustomsRegimes()
-  const customsLocations = getCustomsLocations()
-  const fiscalIncentives = getFiscalIncentives()
+  const customsRegimes = getCustomsRegimes() || []
+  const customsLocations = getCustomsLocations() || {}
+  const fiscalIncentives = getFiscalIncentives() || []
+  const requiredLicenses = getRequiredLicenses() || []
 
   useEffect(() => {
     loadReportData()
@@ -118,7 +119,7 @@ const Reports = () => {
   }
 
   const calculateTaxesByRegime = (regime, baseCalculo) => {
-    const regimeData = customsRegimes.find(r => r.code === regime)
+    const regimeData = (customsRegimes || []).find(r => r.code === regime)
     if (!regimeData) return { total: 0, ii: 0, ipi: 0, pis: 0, cofins: 0, icms: 0, fcp: 0 }
 
     switch (regimeData.calculationMethod) {
@@ -180,7 +181,7 @@ const Reports = () => {
     // Estatísticas por regime
     const regimeStats = {}
     data.forEach(sim => {
-      const regimeName = customsRegimes.find(r => r.code === sim.customsRegime)?.name || 'Desconhecido'
+      const regimeName = (customsRegimes || []).find(r => r.code === sim.customsRegime)?.name || 'Desconhecido'
       if (!regimeStats[regimeName]) {
         regimeStats[regimeName] = { count: 0, totalValue: 0, averageTaxes: 0 }
       }
@@ -502,7 +503,7 @@ const Reports = () => {
                     <td className="py-3 px-4 text-gray-600 dark:text-gray-300">{sim.originCountry}</td>
                     <td className="py-3 px-4 text-gray-600 dark:text-gray-300">{getTransportModeName(sim.transportMode)}</td>
                     <td className="py-3 px-4 text-gray-600 dark:text-gray-300">
-                      {customsRegimes.find(r => r.code === sim.customsRegime)?.name}
+                      {(customsRegimes || []).find(r => r.code === sim.customsRegime)?.name}
                     </td>
                     <td className="py-3 px-4 text-right font-medium text-gray-900 dark:text-white">
                       {formatCurrency(sim.totalCost)}
@@ -623,7 +624,7 @@ const Reports = () => {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
               >
                 <option value="all">Todos</option>
-                {customsRegimes.map(regime => (
+                {(customsRegimes || []).map(regime => (
                   <option key={regime.code} value={regime.code}>
                     {regime.code} - {regime.name}
                   </option>

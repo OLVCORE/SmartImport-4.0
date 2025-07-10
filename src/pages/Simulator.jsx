@@ -36,11 +36,11 @@ const Simulator = () => {
   const [activeTab, setActiveTab] = useState('basic')
   const [showResults, setShowResults] = useState(false)
 
-  const customsRegimes = getCustomsRegimes()
-  const customsLocations = getCustomsLocations()
-  const extraExpenses = getExtraExpenses()
-  const icmsRates = getICMSRates()
-  const fcpRates = getFCPRates()
+  const customsRegimes = getCustomsRegimes() || []
+  const customsLocations = getCustomsLocations() || {}
+  const extraExpenses = getExtraExpenses() || []
+  const icmsRates = getICMSRates() || {}
+  const fcpRates = getFCPRates() || {}
 
   // Estados brasileiros
   const brazilianStates = [
@@ -100,7 +100,7 @@ const Simulator = () => {
   }
 
   const getRegimeColor = (regime) => {
-    const regimeData = customsRegimes.find(r => r.code === regime)
+    const regimeData = (customsRegimes || []).find(r => r.code === regime)
     if (!regimeData) return 'bg-gray-100'
     
     switch (regimeData.calculationMethod) {
@@ -340,7 +340,7 @@ const Simulator = () => {
                           className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                         >
                           <option value="">Selecione...</option>
-                          {customsLocations[simulation.transportMode]?.map(location => (
+                          {(customsLocations[simulation.transportMode] || []).map(location => (
                             <option key={location.code} value={location.code}>
                               {location.name} - {location.city}/{location.state}
                             </option>
@@ -398,7 +398,7 @@ const Simulator = () => {
                         Regime Aduaneiro
                       </label>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {customsRegimes.map(regime => (
+                        {(customsRegimes || []).map(regime => (
                           <button
                             key={regime.code}
                             onClick={() => handleInputChange('customsRegime', regime.code)}
@@ -479,7 +479,7 @@ const Simulator = () => {
                         Despesas Extras
                       </label>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {extraExpenses.map(expense => (
+                        {(extraExpenses || []).map(expense => (
                           <label
                             key={expense.code}
                             className="flex items-start p-4 rounded-lg border-2 border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 cursor-pointer transition-colors"
@@ -569,7 +569,7 @@ const Simulator = () => {
                       <div className="flex justify-between">
                         <span className="text-blue-700 dark:text-blue-300">Regime:</span>
                         <span className="font-medium text-blue-900 dark:text-blue-100">
-                          {customsRegimes.find(r => r.code === simulation.customsRegime)?.name || 'Não informado'}
+                          {(customsRegimes || []).find(r => r.code === simulation.customsRegime)?.name || 'Não informado'}
                         </span>
                       </div>
                     </div>
@@ -650,7 +650,7 @@ const Simulator = () => {
                     <div className="space-y-3">
                       <h4 className="font-medium text-gray-900 dark:text-white">Despesas Aduaneiras</h4>
                       <div className="space-y-2 text-sm">
-                        {simulation.calculatedExpenses.customs.details.map((expense, index) => (
+                        {(simulation.calculatedExpenses.customs.details || []).map((expense, index) => (
                           <div key={index} className="flex justify-between">
                             <span className="text-gray-600 dark:text-gray-300">{expense.name}:</span>
                             <span className="font-medium">{formatCurrency(expense.amount)}</span>
@@ -673,7 +673,7 @@ const Simulator = () => {
                     <div className="space-y-3">
                       <h4 className="font-medium text-gray-900 dark:text-white">Incentivos Fiscais</h4>
                       <div className="space-y-2 text-sm">
-                        {simulation.calculatedIncentives.details.map((incentive, index) => (
+                        {(simulation.calculatedIncentives.details || []).map((incentive, index) => (
                           <div key={index} className="flex justify-between">
                             <span className="text-gray-600 dark:text-gray-300">{incentive.name}:</span>
                             <span className="font-medium text-green-600 dark:text-green-400">
@@ -694,11 +694,11 @@ const Simulator = () => {
                   )}
 
                   {/* Licenças */}
-                  {simulation.requiredLicenses?.length > 0 && (
+                  {(simulation.requiredLicenses || []).length > 0 && (
                     <div className="space-y-3">
                       <h4 className="font-medium text-gray-900 dark:text-white">Licenças Obrigatórias</h4>
                       <div className="space-y-2">
-                        {simulation.requiredLicenses.map((license, index) => (
+                        {(simulation.requiredLicenses || []).map((license, index) => (
                           <div key={index} className="flex items-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
                             <AlertTriangle className="w-4 h-4 text-yellow-500 mr-2" />
                             <div className="flex-1">

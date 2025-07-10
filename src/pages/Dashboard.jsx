@@ -41,10 +41,10 @@ const Dashboard = () => {
     monthlyTrend: []
   })
 
-  const customsRegimes = getCustomsRegimes()
-  const customsLocations = getCustomsLocations()
-  const fiscalIncentives = getFiscalIncentives()
-  const requiredLicenses = getRequiredLicenses()
+  const customsRegimes = getCustomsRegimes() || []
+  const customsLocations = getCustomsLocations() || {}
+  const fiscalIncentives = getFiscalIncentives() || []
+  const requiredLicenses = getRequiredLicenses() || []
 
   useEffect(() => {
     loadDashboardData()
@@ -88,7 +88,8 @@ const Dashboard = () => {
       
       // Calcular impostos baseados no regime
       const regime = regimes[Math.floor(Math.random() * regimes.length)]
-      const taxes = calculateTaxesByRegime(regime, baseCalculo)
+      const regimeData = (customsRegimes || []).find(r => r.code === regime)
+      const taxes = regimeData ? calculateTaxesByRegime(regime, baseCalculo) : { total: 0, ii: 0, ipi: 0, pis: 0, cofins: 0, icms: 0, fcp: 0 }
       
       // Calcular despesas
       const expenses = Math.random() * 300 + 100
@@ -129,7 +130,7 @@ const Dashboard = () => {
   }
 
   const calculateTaxesByRegime = (regime, baseCalculo) => {
-    const regimeData = customsRegimes.find(r => r.code === regime)
+    const regimeData = (customsRegimes || []).find(r => r.code === regime)
     if (!regimeData) return { total: 0, ii: 0, ipi: 0, pis: 0, cofins: 0, icms: 0, fcp: 0 }
 
     switch (regimeData.calculationMethod) {
@@ -173,7 +174,7 @@ const Dashboard = () => {
     // Top regimes aduaneiros
     const regimeCounts = {}
     calculatedSimulations.forEach(sim => {
-      const regimeName = customsRegimes.find(r => r.code === sim.customsRegime)?.name || 'Desconhecido'
+      const regimeName = (customsRegimes || []).find(r => r.code === sim.customsRegime)?.name || 'Desconhecido'
       regimeCounts[regimeName] = (regimeCounts[regimeName] || 0) + 1
     })
     const topRegimes = Object.entries(regimeCounts)
@@ -258,9 +259,9 @@ const Dashboard = () => {
 
   const getCustomsLocation = (code) => {
     const allLocations = [
-      ...customsLocations.maritime,
-      ...customsLocations.air,
-      ...customsLocations.land
+      ...(customsLocations.maritime || []),
+      ...(customsLocations.air || []),
+      ...(customsLocations.land || [])
     ]
     return allLocations.find(location => location.code === code)
   }
@@ -437,13 +438,13 @@ const Dashboard = () => {
               Regimes Aduaneiros
             </h3>
             <div className="space-y-3">
-              {stats.topRegimes.map((regime, index) => (
+              {(customsRegimes || []).map((regime, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-300 truncate">
                     {regime.name}
                   </span>
                   <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {regime.count}
+                    {regimeCounts[regime.name] || 0}
                   </span>
                 </div>
               ))}
@@ -457,13 +458,13 @@ const Dashboard = () => {
               Localizações
             </h3>
             <div className="space-y-3">
-              {stats.topLocations.map((location, index) => (
+              {(Object.values(customsLocations) || []).flat().map((location, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-300 truncate">
                     {location.name}
                   </span>
                   <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {location.count}
+                    {locationCounts[`${location.name} - ${location.city}/${location.state}`] || 0}
                   </span>
                 </div>
               ))}
@@ -477,22 +478,16 @@ const Dashboard = () => {
               Incentivos Fiscais
             </h3>
             <div className="space-y-3">
-              {stats.topIncentives.length > 0 ? (
-                stats.topIncentives.map((incentive, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600 dark:text-gray-300 truncate">
-                      {incentive.name}
-                    </span>
-                    <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                      {incentive.count}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Nenhum incentivo aplicado
-                </p>
-              )}
+              {(fiscalIncentives || []).map((incentive, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-300 truncate">
+                    {incentive.name}
+                  </span>
+                  <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                    {incentiveCounts[incentive.name] || 0}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -505,13 +500,13 @@ const Dashboard = () => {
               Licenças Obrigatórias
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {stats.requiredLicenses.map((license, index) => (
+              {(requiredLicenses || []).map((license, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
                   <span className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">
                     {license.name}
                   </span>
                   <span className="text-sm text-yellow-600 dark:text-yellow-400">
-                    {license.count}
+                    {licenseCounts[license.name] || 0}
                   </span>
                 </div>
               ))}
