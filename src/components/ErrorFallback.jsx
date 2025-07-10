@@ -14,8 +14,25 @@ const ErrorFallback = ({ error }) => {
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
             Ocorreu um erro inesperado. Nossa equipe foi notificada e está trabalhando para resolver o problema.<br/>
-            Tente recarregar a página.
+            Tente recarregar a página.<br/>
+            <span className="text-red-600 font-bold">Por favor, envie um print desta tela para o suporte!</span>
           </p>
+          {/* SEMPRE mostrar detalhes do erro, mesmo em produção */}
+          {error && (
+            <details className="mb-6 text-left open">
+              <summary className="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Detalhes técnicos do erro (envie ao suporte)
+              </summary>
+              <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 text-xs font-mono text-gray-800 dark:text-gray-200 overflow-auto max-h-32">
+                <pre>{error.message}</pre>
+                {error.stack && (
+                  <pre className="mt-2 text-gray-600 dark:text-gray-400">
+                    {error.stack}
+                  </pre>
+                )}
+              </div>
+            </details>
+          )}
           <button
             onClick={() => window.location.reload()}
             className="flex items-center justify-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200 mx-auto"
