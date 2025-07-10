@@ -217,36 +217,50 @@ const checkRequiredLicenses = (ncmCode) => {
   return getRequiredLicenses(ncmCode)
 }
 
-// Função para gerar simulações mockadas (já existente ou adapte conforme necessário)
+// Função para gerar simulações mockadas robustas
 function generateMockSimulations() {
-  // Importe ou copie a lógica de mock já usada nas páginas
-  // Exemplo simplificado:
-  return [
-    {
-      id: 'sim_1',
-      productName: 'Mock Produto',
-      ncmCode: '00.00.00',
+  // Exemplo: 10 simulações variadas
+  const products = [
+    'Smartphone iPhone 15', 'Notebook Dell XPS', 'Tablet Samsung Galaxy',
+    'Smart TV LG OLED', 'Fone de Ouvido Sony', 'Câmera Canon EOS',
+    'Drone DJI Mavic', 'Console PlayStation 5', 'Smartwatch Apple Watch',
+    'Monitor Dell UltraSharp'
+  ]
+  const regimes = ['01', '02', '03', '04', '05', '06']
+  const modes = ['maritime', 'air', 'land']
+  const states = ['SP', 'RJ', 'MG', 'RS', 'PR', 'SC', 'BA', 'CE', 'GO', 'MT']
+  const mockSimulations = []
+  for (let i = 0; i < 10; i++) {
+    const productValue = Math.random() * 5000 + 500
+    const freightValue = Math.random() * 800 + 200
+    const insuranceValue = productValue * 0.02
+    const baseCalculo = productValue + freightValue + insuranceValue
+    mockSimulations.push({
+      id: `sim_${i + 1}`,
+      productName: products[Math.floor(Math.random() * products.length)],
+      ncmCode: `${Math.floor(Math.random() * 99) + 1}.${Math.floor(Math.random() * 99) + 1}.${Math.floor(Math.random() * 99) + 1}`,
       originCountry: 'Brasil',
-      originState: 'SP',
-      destinationState: 'RJ',
-      transportMode: 'maritime',
-      customsRegime: '01',
+      originState: states[Math.floor(Math.random() * states.length)],
+      destinationState: states[Math.floor(Math.random() * states.length)],
+      transportMode: modes[Math.floor(Math.random() * modes.length)],
+      customsRegime: regimes[Math.floor(Math.random() * regimes.length)],
       customsLocation: 'BRSSZ',
-      productValue: 1000,
-      freightValue: 200,
-      insuranceValue: 20,
-      weight: 10,
-      containers: 1,
-      storageDays: 5,
+      productValue,
+      freightValue,
+      insuranceValue,
+      weight: Math.random() * 10 + 1,
+      containers: Math.floor(Math.random() * 3) + 1,
+      storageDays: Math.floor(Math.random() * 10) + 3,
       calculatedTaxes: { ii: 160, ipi: 80, pis: 21, cofins: 96.5, icms: 180, fcp: 20 },
       calculatedExpenses: { customs: { total: 100 }, extra: { total: 0 } },
       calculatedIncentives: { totalSavings: 0 },
       requiredLicenses: [],
-      totalCost: 1697.5,
-      createdAt: new Date().toISOString(),
+      totalCost: baseCalculo + 160 + 80 + 21 + 96.5 + 180 + 20 + 100,
+      createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
       status: 'calculated'
-    }
-  ]
+    })
+  }
+  return mockSimulations
 }
 
 export const useSimulationStore = create(
@@ -442,13 +456,14 @@ export const useSimulationStore = create(
         try {
           // Em produção, sempre retorna mock
           if (import.meta.env.PROD) {
+            console.log('[SmartImport] Usando dados mockados em produção (Vercel)')
             return generateMockSimulations()
           }
           // Em dev, tenta API, senão mock
           const response = await axios.get(`${API_BASE_URL}/simulations`)
           return response.data
         } catch (error) {
-          // Em qualquer erro, retorna mock
+          console.warn('[SmartImport] Erro ao buscar API, usando mock:', error)
           return generateMockSimulations()
         }
       },
